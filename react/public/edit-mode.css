@@ -1,9 +1,9 @@
-.easy-mode-edit [data-easytag] {
+.easy-mode-edit * {
   position: relative;
   transition: all 0.2s ease;
 }
 
-.easy-mode-edit [data-easytag].easy-hover-active {
+.easy-mode-edit .easy-hover-active {
   outline: 2px solid #8b5cf6;
   background-color: rgba(139, 92, 246, 0.05);
   cursor: pointer;
@@ -32,7 +32,7 @@
   transition: all 0.2s ease;
 }
 
-.easy-mode-edit [data-easytag].easy-hover-active .easy-tag-label {
+.easy-mode-edit .easy-hover-active .easy-tag-label {
   opacity: 1;
   transform: translateY(0);
 }
@@ -50,12 +50,12 @@
   padding: 1px 4px;
 }
 
-/* Отключаем hover для всех элементов когда активен режим редактирования */
-.easy-mode-edit [data-easytag] {
-  pointer-events: none;
+/* Включаем pointer-events для всех элементов в режиме редактирования */
+.easy-mode-edit {
+  pointer-events: auto;
+  cursor: crosshair;
 }
 
-/* Включаем pointer-events только для самого глубокого элемента */
-.easy-mode-edit [data-easytag] * {
+.easy-mode-edit * {
   pointer-events: auto;
 }

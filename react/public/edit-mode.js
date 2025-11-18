@@ -1,16 +1,18 @@
-
 document.addEventListener('DOMContentLoaded', function() {
   let currentHoverElement = null;
+  let easyEditMode = false;
 
   // Обработчик сообщений для включения/выключения режима редактирования
   window.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'enableEasyEditMode') {
+      easyEditMode = true;
       document.body.classList.add('easy-mode-edit');
       initEasyTagHandlers();
       console.log('✅ Easy edit mode enabled');
     }
     
     if (event.data && event.data.type === 'disableEasyEditMode') {
+      easyEditMode = false;
       document.body.classList.remove('easy-mode-edit');
       removeEasyTagHandlers();
       console.log('❌ Easy edit mode disabled');
@@ -19,170 +21,117 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Функция для удаления всех обработчиков
   function removeEasyTagHandlers() {
-    const elements = document.querySelectorAll('[data-easytag]');
+    document.removeEventListener('mouseover', handleMouseOver);
+    document.removeEventListener('mouseout', handleMouseOut);
+    document.removeEventListener('click', handleEasyTagClick);
     
-    elements.forEach(element => {
-      element.removeEventListener('click', handleEasyTagClick);
-      element.removeEventListener('mouseover', handleMouseOver);
-      element.removeEventListener('mouseout', handleMouseOut);
-      
-      // Удаляем подсказку если она есть и классы
-      if (element._easyTagLabel) {
-        element._easyTagLabel.remove();
-        element._easyTagLabel = null;
-      }
-      element.classList.remove('easy-hover-active');
-    });
+    // Удаляем все подсказки
+    const labels = document.querySelectorAll('.easy-tag-label');
+    labels.forEach(label => label.remove());
+    
+    // Убираем выделение со всех элементов
+    const highlighted = document.querySelectorAll('.easy-hover-active');
+    highlighted.forEach(element => element.classList.remove('easy-hover-active'));
     
     currentHoverElement = null;
   }
 
   // Обработчики для показа/скрытия подсказки
   function handleMouseOver(event) {
-    event.stopPropagation();
+    if (!easyEditMode) return;
     
-    // Находим ближайший элемент с data-easytag
-    const easyTagElement = event.target.closest('[data-easytag]');
-    if (!easyTagElement) return;
+    const element = event.target;
     
-    // Если это уже текущий элемент, ничего не делаем
-    if (easyTagElement === currentHoverElement) return;
+    // Пропускаем элементы, которые уже выделены или являются подсказками
+    if (element === currentHoverElement || element.classList.contains('easy-tag-label')) return;
     
     // Убираем выделение с предыдущего элемента
     if (currentHoverElement) {
       currentHoverElement.classList.remove('easy-hover-active');
-      if (currentHoverElement._easyTagLabel) {
-        currentHoverElement._easyTagLabel.remove();
-        currentHoverElement._easyTagLabel = null;
-      }
+      const prevLabel = currentHoverElement.querySelector('.easy-tag-label');
+      if (prevLabel) prevLabel.remove();
     }
     
     // Устанавливаем новый текущий элемент
-    currentHoverElement = easyTagElement;
+    currentHoverElement = element;
     
     // Создаем подсказку
-    if (!easyTagElement._easyTagLabel) {
-      const tagName = easyTagElement.tagName.toLowerCase();
-      const label = document.createElement('div');
-      label.className = 'easy-tag-label';
-      label.textContent = tagName;
+    const tagName = element.tagName.toLowerCase();
+    const label = document.createElement('div');
+    label.className = 'easy-tag-label';
+    label.textContent = tagName;
 
-      // Для очень маленьких элементов используем уменьшенную подсказку
-      const rect = easyTagElement.getBoundingClientRect();
-      if (rect.width < 50 || rect.height < 30) {
-        label.classList.add('small');
-      }
-
-      // Для элементов у правого края показываем подсказку справа
-      if (rect.left > window.innerWidth - 100) {
-        label.classList.add('top-right');
-      }
-
-      easyTagElement.appendChild(label);
-      easyTagElement._easyTagLabel = label;
+    // Для очень маленьких элементов используем уменьшенную подсказку
+    const rect = element.getBoundingClientRect();
+    if (rect.width < 50 || rect.height < 30) {
+      label.classList.add('small');
     }
-    
-    // Добавляем класс выделения
-    easyTagElement.classList.add('easy-hover-active');
+
+    // Для элементов у правого края показываем подсказку справа
+    if (rect.left > window.innerWidth - 100) {
+      label.classList.add('top-right');
+    }
+
+    element.appendChild(label);
+    element.classList.add('easy-hover-active');
   }
 
   function handleMouseOut(event) {
-    event.stopPropagation();
+    if (!easyEditMode || !currentHoverElement) return;
     
     // Проверяем, покидаем ли мы текущий элемент
     const relatedTarget = event.relatedTarget;
-    if (!relatedTarget || !currentHoverElement) return;
+    if (!relatedTarget) return;
     
     // Если мы переходим на элемент, который не является потомком текущего элемента
     if (!currentHoverElement.contains(relatedTarget)) {
       currentHoverElement.classList.remove('easy-hover-active');
-      if (currentHoverElement._easyTagLabel) {
-        currentHoverElement._easyTagLabel.remove();
-        currentHoverElement._easyTagLabel = null;
-      }
+      const label = currentHoverElement.querySelector('.easy-tag-label');
+      if (label) label.remove();
       currentHoverElement = null;
     }
   }
 
   // Функция для инициализации обработчиков событий
   function initEasyTagHandlers() {
-    const elements = document.querySelectorAll('[data-easytag]');
-    
-    elements.forEach(element => {
-      // Удаляем старые обработчики
-      element.removeEventListener('click', handleEasyTagClick);
-      element.removeEventListener('mouseover', handleMouseOver);
-      element.removeEventListener('mouseout', handleMouseOut);
-      
-      // Добавляем новые обработчики
-      element.addEventListener('click', handleEasyTagClick);
-      element.addEventListener('mouseover', handleMouseOver);
-      element.addEventListener('mouseout', handleMouseOut);
-    });
+    // Добавляем обработчики на весь документ
+    document.addEventListener('mouseover', handleMouseOver);
+    document.addEventListener('mouseout', handleMouseOut);
+    document.addEventListener('click', handleEasyTagClick);
   }
 
-  // Обработчик клика по элементам с data-easytag
+  // Обработчик клика по любым элементам
   function handleEasyTagClick(event) {
-    if (!document.body.classList.contains('easy-mode-edit')) {
-      return;
-    }
+    if (!easyEditMode) return;
 
     event.stopPropagation();
-    const easyTagElement = event.target.closest('[data-easytag]');
-    if (!easyTagElement) return;
+    event.preventDefault();
     
-    const easyTagData = easyTagElement.getAttribute('data-easytag');
-    const tagName = easyTagElement.tagName.toLowerCase();
+    const element = event.target;
+    const tagName = element.tagName.toLowerCase();
     
     console.log('Clicked element:', { 
-      tag: tagName, 
-      data: easyTagData 
+      tag: tagName,
+      element: element
     });
     
     window.parent.postMessage({
       type: 'easyTagClick',
       timestamp: new Date().toISOString(),
-      data: easyTagData,
       tagName: tagName,
       elementInfo: {
         tag: tagName,
-        classes: easyTagElement.className,
-        id: easyTagElement.id
+        classes: element.className,
+        id: element.id,
+        innerText: element.innerText ? element.innerText.substring(0, 100) : '',
+        innerHTML: element.innerHTML ? element.innerHTML.substring(0, 200) : ''
       }
     }, '*');
-
-    event.preventDefault();
   }
-
-  // Наблюдатель за изменениями DOM
-  const observer = new MutationObserver(function(mutations) {
-    let shouldInit = false;
-    
-    mutations.forEach(function(mutation) {
-      mutation.addedNodes.forEach(function(node) {
-        if (node.nodeType === 1) {
-          if (node.hasAttribute('data-easytag') || 
-              node.querySelector('[data-easytag]')) {
-            shouldInit = true;
-          }
-        }
-      });
-    });
-    
-    if (shouldInit && document.body.classList.contains('easy-mode-edit')) {
-      setTimeout(() => {
-        initEasyTagHandlers();
-      }, 10);
-    }
-  });
-
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
 
   // Инициализация при загрузке, если режим уже активен
   if (document.body.classList.contains('easy-mode-edit')) {
+    easyEditMode = true;
     initEasyTagHandlers();
   }
 });
